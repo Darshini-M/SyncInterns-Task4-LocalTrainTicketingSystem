@@ -6,29 +6,31 @@
 class Ticket {
 private:
     std::string passengerName;
-    int seatNumber;
     bool isBooked;
 
 public:
-    Ticket() : passengerName(""), seatNumber(-1), isBooked(false) {}
+    Ticket() : passengerName(""), isBooked(false) {}
 
-    void BookTicket(const std::string& name, int seat) {
+    void BookTicket(const std::string& name) {
         if (!isBooked) {
             passengerName = name;
-            seatNumber = seat;
             isBooked = true;
-            std::cout << "Ticket booked for " << passengerName << " at seat " << seatNumber << std::endl;
+            std::cout << "Ticket booked for " << passengerName << std::endl;
         } else {
-            std::cout << "Seat " << seatNumber << " is already booked by " << passengerName << std::endl;
+            std::cout << "This seat is already booked by " << passengerName << std::endl;
         }
     }
 
-    void DisplayTicket() const {
+    void DisplayTicket(int seatNumber) const {
         if (isBooked) {
-            std::cout << "Passenger: " << passengerName << " | Seat: " << seatNumber << std::endl;
+            std::cout << "Seat " << seatNumber << ": Passenger: " << passengerName << std::endl;
         } else {
-            std::cout << "This ticket is not booked." << std::endl;
+            std::cout << "Seat " << seatNumber << ": This seat is not booked." << std::endl;
         }
+    }
+
+    bool IsBooked() const {
+        return isBooked;
     }
 };
 
@@ -55,14 +57,21 @@ public:
             return;
         }
 
-        tickets[seatNumber].BookTicket(passengerName, seatNumber);
+        tickets[seatNumber].BookTicket(passengerName);
     }
 
     void DisplayTickets() const {
         std::cout << "Tickets for " << routeName << " train (From: " << from << " To: " << to << " Departure: " << departureTime << "):" << std::endl;
         for (int i = 0; i < totalSeats; ++i) {
             std::cout << "Seat " << i << ": ";
-            tickets[i].DisplayTicket();
+            tickets[i].DisplayTicket(i);
+        }
+    }
+
+    void DisplayBookedTickets() const {
+        PrintBox("Booked Tickets");
+        for (int i = 0; i < totalSeats; ++i) {
+            tickets[i].DisplayTicket(i);
         }
     }
 
@@ -80,6 +89,17 @@ public:
 
     std::string GetDepartureTime() const {
         return departureTime;
+    }
+
+    int GetTotalSeats() const {
+        return totalSeats;
+    }
+
+    bool IsSeatBooked(int seatNumber) const {
+        if (seatNumber < 0 || seatNumber >= totalSeats) {
+            return true; // Invalid seat number is considered booked
+        }
+        return tickets[seatNumber].IsBooked();
     }
 };
 
@@ -104,18 +124,19 @@ int main() {
         std::cout << "Select an option:" << std::endl;
         std::cout << "1. Display available trains" << std::endl;
         std::cout << "2. Book a ticket" << std::endl;
-        std::cout << "3. Exit" << std::endl;
+        std::cout << "3. View booked tickets" << std::endl;
+        std::cout << "4. Exit" << std::endl;
         std::cin >> choice;
 
         if (choice == 1) {
             PrintBox("Available Trains");
-            std::cout << std::left << std::setw(4) << "No." << std::setw(20) << "Route" << std::setw(20) << "From" << std::setw(20) << "To" << std::setw(15) << "Departure" << std::endl;
+            std::cout << std::left << std::setw(4) << "No." << std::setw(20) << "Route" << std::setw(20) << "From" << std::setw(20) << "To" << std::setw(15) << "Departure" << std::setw(15) << "Seats" << std::endl;
             for (size_t i = 0; i < trains.size(); ++i) {
-                std::cout << std::setw(4) << i + 1 << std::setw(20) << trains[i].GetRouteName() << std::setw(20) << trains[i].GetFrom() << std::setw(20) << trains[i].GetTo() << std::setw(15) << trains[i].GetDepartureTime() << std::endl;
+                std::cout << std::setw(4) << i + 1 << std::setw(20) << trains[i].GetRouteName() << std::setw(20) << trains[i].GetFrom() << std::setw(20) << trains[i].GetTo() << std::setw(15) << trains[i].GetDepartureTime() << std::setw(15) << trains[i].GetTotalSeats() << std::endl;
             }
             std::cout << std::endl;
         } else if (choice == 2) {
-             int trainIndex, seatNumber;
+            int trainIndex, numSeats, seatNumber;
             std::string passengerName;
 
             std::cout << "Select a train (1-" << trains.size() << "): ";
@@ -131,11 +152,46 @@ int main() {
             std::cin.ignore();
             std::getline(std::cin, passengerName);
 
-            std::cout << "Enter seat number: ";
-            std::cin >> seatNumber;
+            std::cout << "Enter number of seats to book: ";
+            std::cin >> numSeats;
 
-            trains[trainIndex].BookTicket(passengerName, seatNumber);
+            if (numSeats <= 0 || numSeats > trains[trainIndex].GetTotalSeats()) {
+                std::cout << "Invalid number of seats." << std::endl;
+                continue;
+            }
+
+            for (int i = 0; i < numSeats; ++i) {
+                std::cout << "Enter seat number " << i + 1 << " (0-" << trains[trainIndex].GetTotalSeats() - 1 << "): ";
+                std::cin >> seatNumber;
+
+                if (seatNumber < 0 || seatNumber >= trains[trainIndex].GetTotalSeats()) {
+                    std::cout << "Invalid seat number." << std::endl;
+                    continue;
+                }
+
+                if (trains[trainIndex].IsSeatBooked(seatNumber)) {
+                    std::cout << "Seat " << seatNumber << " is already booked." << std::endl;
+                } else {
+                    std::cout << "Enter passenger name for seat " << seatNumber << ": ";
+                    std::cin.ignore();
+                    std::getline(std::cin, passengerName);
+                    trains[trainIndex].BookTicket(passengerName, seatNumber);
+                }
+            }
         } else if (choice == 3) {
+            int trainIndex;
+
+            std::cout << "Select a train (1-" << trains.size() << "): ";
+            std::cin >> trainIndex;
+            trainIndex--;
+
+            if (trainIndex < 0 || trainIndex >= trains.size()) {
+                std::cout << "Invalid train selection." << std::endl;
+                continue;
+            }
+
+            trains[trainIndex].DisplayBookedTickets();
+        } else if (choice == 4) {
             std::cout << "Exiting. Thank you!" << std::endl;
             break;
         } else {
